@@ -4,15 +4,12 @@ use warnings;
 use Kwiki::SOAP '-Base';
 use Kwiki::Installer '-base';
 
-# Enter your google key here
-# Go to http://api.google.com/ to get yours
-const key => '';
 # XXX at least some of this should come from preferences
 const wsdl => 'http://api.google.com/GoogleSearch.wsdl';
 const method => 'doGoogleSearch';
 const limit => 10;
 
-our $VERSION = 0.01;
+our $VERSION = 0.02;
 
 const class_title => 'google soap retrieval';
 const class_id => 'googlesoap';
@@ -23,39 +20,50 @@ sub register {
     $registry->add(wafl => googlesoap => 'Kwiki::SOAP::Google::Wafl');
 }
 
+sub key {
+    ($self->config->can('google_api_key'))
+      ? $self->config->google_api_key
+      : undef;
+}
+
+sub get_result {
+    my $query = shift;
+    my $google_key = $self->key;
+    return { error => 'no google key' }
+        unless $google_key;
+    my $result = $self->soap(
+        $self->wsdl,
+        $self->method,
+        [
+        $google_key,
+        $query,
+        0,
+        $self->limit,
+        'true', '', 'false', '', 'UTF-8', 'UTF-8'
+        ]
+    );
+}
+
+
 package Kwiki::SOAP::Google::Wafl;
 use base 'Kwiki::SOAP::Wafl';
 
 sub html {
     my $query = $self->arguments;
-    return $self->wafl_error
-        unless ($query && $self->googlesoap->key);
-
     $self->use_class('googlesoap');
+    return $self->wafl_error unless ($query);
 
-    my $result = $self->soap(
-        $self->googlesoap->wsdl,
-        $self->googlesoap->method,
-        [
-        $self->googlesoap->key,
-        $query,
-        0,
-        $self->googlesoap->limit,
-        0, '', 0, '', 'latin1', 'latin1'
-        ]
-    );
+    my $result = $self->googlesoap->get_result($query);
 
     return $self->pretty($result);
 }
 
 sub pretty {
     my $result = shift;
-
-    my $results = shift;
-
     $self->hub->template->process('google_soap.html',
         soap_class  => $self->googlesoap->class_id,
         google_elements => $result->{resultElements},
+        error => $result->{error},
     );
 }
 
@@ -107,6 +115,9 @@ div.googlesoap { background: #dddddd; font-family: sans-serif;}
 __template/tt2/google_soap.html__
 <!-- BEGIN google_soap.html -->
 <div class="[% soap_class %]">
+[% IF error %]
+<span style="color:red">[% error %]</span>
+[% ELSE %]
 <dl>
 [% FOREACH google_result = google_elements %]
 <dt><a href='[% google_result.URL %]' title='[% google_result.title %]'>
@@ -116,4 +127,6 @@ __template/tt2/google_soap.html__
 <dd>[% google_result.snippet %]</dd>
 [% END %]
 </dl>
+[% END %]
+</div>
 <!-- END google_soap.html -->
