@@ -4,12 +4,20 @@ use warnings;
 use Test::More tests => 2;
 use Kwiki;
 
+my $key = '';
+
 BEGIN {
     use_ok 'Kwiki::SOAP::Google';
 }
 
 SKIP: {
-    skip "templates make tests hard", 1;
+    eval {require Kwiki::Test};
+    skip "Kwiki::Test needed for tests", 1 if $@;
+    skip "google key needed for test", 1 unless $key;
+
+    my $kwiki = Kwiki::Test->new->init(['Kwiki::SOAP::Google']);
+    $kwiki->hub->googlesoap->key($key);
+
     my $content =<<"EOF";
 === Hello
 
@@ -17,13 +25,8 @@ SKIP: {
 
 EOF
 
-    my $kwiki = Kwiki->new;
-    my $hub = $kwiki->load_hub({plugin_classes => ['Kwiki::SOAP::Google']});
-    my $registry = $hub->load_class('registry');
-    $registry->update();
-    $hub->load_registry();
-    my $formatter = $hub->load_class('formatter');
-
-    my $output = $formatter->text_to_html($content);
+    my $output = $kwiki->hub->formatter->text_to_html($content);
     like($output, qr/Glacial Erratics/, 'content looks okay');
+    $kwiki->cleanup
 }
+

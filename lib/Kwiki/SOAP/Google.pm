@@ -9,21 +9,19 @@ const wsdl => 'http://api.google.com/GoogleSearch.wsdl';
 const method => 'doGoogleSearch';
 const limit => 10;
 
-our $VERSION = 0.02;
+our $VERSION = 0.03;
 
 const class_title => 'google soap retrieval';
 const class_id => 'googlesoap';
 const css_file => 'googlesoap.css';
+const config_file => 'googlesoap.yaml';
+
+field key => -init => '($self->config->can("google_api_key"))
+      ? $self->config->google_api_key : undef';
 
 sub register {
     my $registry = shift;
     $registry->add(wafl => googlesoap => 'Kwiki::SOAP::Google::Wafl');
-}
-
-sub key {
-    ($self->config->can('google_api_key'))
-      ? $self->config->google_api_key
-      : undef;
 }
 
 sub get_result {
@@ -50,18 +48,19 @@ use base 'Kwiki::SOAP::Wafl';
 
 sub html {
     my $query = $self->arguments;
-    $self->use_class('googlesoap');
     return $self->wafl_error unless ($query);
 
-    my $result = $self->googlesoap->get_result($query);
+    my $result = $self->hub->googlesoap->get_result($query);
 
-    return $self->pretty($result);
+    return $self->pretty($query, $result);
 }
 
 sub pretty {
+    my $query = shift;
     my $result = shift;
     $self->hub->template->process('google_soap.html',
-        soap_class  => $self->googlesoap->class_id,
+        soap_class  => $self->hub->googlesoap->class_id,
+        query => $query,
         google_elements => $result->{resultElements},
         error => $result->{error},
     );
@@ -130,3 +129,5 @@ __template/tt2/google_soap.html__
 [% END %]
 </div>
 <!-- END google_soap.html -->
+__config/googlesoap.yaml__
+google_api_key:
