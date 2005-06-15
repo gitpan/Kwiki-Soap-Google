@@ -9,7 +9,7 @@ const wsdl => 'http://api.google.com/GoogleSearch.wsdl';
 const method => 'doGoogleSearch';
 const limit => 10;
 
-our $VERSION = 0.03;
+our $VERSION = 0.04;
 
 const class_title => 'google soap retrieval';
 const class_id => 'googlesoap';
